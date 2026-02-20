@@ -188,20 +188,20 @@ validation_script
 
 ## 🎯 Engineering Highlights
 
-This project demonstrates:
+## 📊 Key Results
 
-* Control-oriented battery modeling
-* High-accuracy numerical implementation
-* Model-to-model verification strategy
-* Simulink architecture for embedded deployment
+| Metric | Value |
+|--------|-------|
+SOC Accuracy (MAE) | **2.22%**
+Voltage RMSE | **39 mV**
+Execution | **Real-time capable**
+Language | **Portable C (embedded-ready)**
 
-Which are directly relevant for:
+## 🧠 Target Applications
 
-* BMS development
-* Embedded systems
-* EV power electronics
-* Energy storage research
-
+- Electric Vehicles (BMS)
+- Energy Storage Systems
+- Battery-powered embedded platforms
 ---
 
 ## 👨‍💻 Author
