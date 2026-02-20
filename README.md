@@ -4,7 +4,7 @@
 
 ## 📌 Project Overview
 
-This project presents a **fully validated 1-RC Equivalent Circuit Model (ECM)** for a lithium-ion battery implemented in **MATLAB and Simulink**, with direct comparison to **measured experimental data**.
+This project presents a **fully validated 1-RC Equivalent Circuit Model (ECM)** for a lithium-ion battery implemented in **MATLAB and Simulink**, with direct comparison to **measured experimental data**, The model is validated using the NASA PCoE lithium-ion battery dataset, a widely used benchmark for battery aging and prognostics research.
 
 The objective was to:
 
@@ -14,6 +14,19 @@ The objective was to:
 * Prepare the model for **real-time BMS and embedded applications**
 
 The result is a **high-accuracy, deployment-ready ECM** with millivolt-level numerical consistency.
+
+## 📊 Dataset
+
+This project uses experimental data from the:
+
+**NASA Prognostics Center of Excellence (PCoE) Li-ion Battery Dataset**
+
+- Test type: Constant-current discharge
+- Measurements: Voltage, Current, Temperature
+- Aging cycles included
+- Publicly available and widely used for battery model validation
+
+🔗 https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
 
 ---
 
@@ -144,7 +157,7 @@ This model is suitable for:
 │   ├── ECM_1RC.slx
 │
 ├── Data/
-│   ├── measured_discharge_profile.mat
+│   ├──NASA_PCoE_B0005_discharge.mat
 │
 ├── Results/
 │   ├── validation_plots
