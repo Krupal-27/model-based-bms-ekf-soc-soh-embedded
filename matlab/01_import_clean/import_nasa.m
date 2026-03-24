@@ -14,11 +14,11 @@ function clean_data = import_nasa(raw_data, cycle_type)
     % Output:
     %   clean_data  - struct with cleaned, resampled data
     
-    fprintf('   🔧 Cleaning %s cycle...\n', cycle_type);
+    fprintf('   Cleaning %s cycle...\n', cycle_type);
     
     %% ========== STEP 1: VERIFY INPUT ==========
     if ~istable(raw_data)
-        error('❌ raw_data must be a table');
+        error('raw_data must be a table');
     end
     
     % Make a copy to avoid modifying original
@@ -27,7 +27,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
     % Remove any rows that are completely NaN
     data = rmmissing(data);
     
-    %% ========== STEP 2: FIND TIME COLUMN (FLEXIBLE) ==========
+    %% ========== STEP 2: FIND TIME COLUMN ==========
     % Get all column names
     col_names = data.Properties.VariableNames;
     col_names_lower = lower(col_names);
@@ -47,7 +47,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
     end
     
     if isempty(time_idx)
-        error('❌ No time column found. Available columns: %s', ...
+        error('No time column found. Available columns: %s', ...
             strjoin(col_names, ', '));
     end
     
@@ -63,7 +63,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
     [time_raw, sort_idx] = sort(time_raw);
     data = data(sort_idx, :);
     
-    %% ========== STEP 3: EXTRACT VOLTAGE (FLEXIBLE) ==========
+    %% ========== STEP 3: EXTRACT VOLTAGE  ==========
     V_raw = [];
     
     if strcmpi(cycle_type, 'charge')
@@ -83,7 +83,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
     end
     
     if isempty(V_raw)
-        error('❌ No voltage column found. Available columns: %s', ...
+        error('No voltage column found. Available columns: %s', ...
             strjoin(col_names, ', '));
     end
     
@@ -114,9 +114,9 @@ function clean_data = import_nasa(raw_data, cycle_type)
     if isempty(I_raw)
         if strcmpi(cycle_type, 'impedance')
             I_raw = zeros(size(V_raw));
-            fprintf('   ⚠️  No current data, using zeros\n');
+            fprintf('   No current data, using zeros\n');
         else
-            error('❌ No current column found. Available columns: %s', ...
+            error('No current column found. Available columns: %s', ...
                 strjoin(col_names, ', '));
         end
     end
@@ -130,7 +130,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
         I_raw = -abs(I_raw); % Negative for discharge
     end
     
-    %% ========== STEP 5: EXTRACT TEMPERATURE (FLEXIBLE) ==========
+    %% ========== STEP 5: EXTRACT TEMPERATURE  ==========
     T_raw = [];
     
     temp_cols = {'Temperature_measured', 'temperature', 'temp', 't_c', 't_celsius'};
@@ -143,8 +143,8 @@ function clean_data = import_nasa(raw_data, cycle_type)
     end
     
     if isempty(T_raw)
-        T_raw = 25 * ones(size(V_raw));  % Default 25°C
-        fprintf('   ⚠️  No temperature data, using 25°C\n');
+        T_raw = 25 * ones(size(V_raw));  % Default 25C
+        fprintf('   No temperature data, using 25C\n');
     else
         T_raw = double(T_raw);
     end
@@ -159,7 +159,7 @@ function clean_data = import_nasa(raw_data, cycle_type)
     T_raw = T_raw(valid_idx);
     
     if length(time_raw) < 2
-        error('❌ Insufficient valid data points (need at least 2)');
+        error('Insufficient valid data points (need at least 2)');
     end
     
     %% ========== STEP 7: RESAMPLE TO CONSTANT DT ==========
@@ -200,20 +200,20 @@ function clean_data = import_nasa(raw_data, cycle_type)
     %% ========== STEP 9: QUALITY CHECKS ==========
     % Check for monotonic time
     if any(diff(time_new) <= 0)
-        warning('⚠️  Non-monotonic time after resampling');
+        warning('Non-monotonic time after resampling');
     end
     
     % Check voltage range (2.5V - 4.2V for Li-ion)
     if any(V_new < 2.0) || any(V_new > 4.5)
-        warning('⚠️  Voltage outside expected range (2.0-4.5V)');
+        warning('Voltage outside expected range (2.0-4.5V)');
     end
     
     % Check temperature range
     if any(T_new < -20) || any(T_new > 80)
-        warning('⚠️  Temperature outside expected range (-20 to 80°C)');
+        warning('Temperature outside expected range (-20 to 80C)');
     end
     
-    fprintf('   ✅ Cleaned: %d -> %d points (%.1f Hz)\n', ...
+    fprintf('   Cleaned: %d -> %d points (%.1f Hz)\n', ...
         length(time_raw), length(time_new), 1/dt);
     
 end
