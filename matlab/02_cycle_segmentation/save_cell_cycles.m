@@ -16,8 +16,7 @@ function save_cell_cycles(battery_id, cycles)
     %   battery_id - string, e.g., 'B0005'
     %   cycles     - struct array of segmented cycles
     
-    %% ========== MAP BATTERY ID TO CELL NUMBER ==========
-    % NASA dataset battery mapping
+    %% MAP BATTERY ID TO CELL NUMBER
     battery_map = containers.Map();
     battery_map('B0005') = '01';
     battery_map('B0006') = '02';
@@ -54,24 +53,21 @@ function save_cell_cycles(battery_id, cycles)
     battery_map('B0055') = '33';
     battery_map('B0056') = '34';
     
-    % Get cell number
     if isKey(battery_map, battery_id)
         cell_num = battery_map(battery_id);
         cell_name = sprintf('cell%s', cell_num);
     else
-        % Fallback: use battery_id directly
         cell_name = lower(battery_id);
-        fprintf('⚠️  No mapping for %s, using %s\n', battery_id, cell_name);
+        fprintf('No mapping for %s, using %s\n', battery_id, cell_name);
     end
     
-    %% ========== SAVE WITH CELL NAMING ==========
+    %% SAVE WITH CELL NAMING
     filename = sprintf('%s_cycles.mat', cell_name);
     filepath = fullfile('data/processed', filename);
     
     save(filepath, 'cycles');
-    fprintf('✅ Saved: %s → %s\n', battery_id, filename);
+    fprintf('Saved: %s to %s\n', battery_id, filename);
     
-    % Also save a copy with battery_id for backward compatibility
     backup_filename = sprintf('%s_segmented_cycles.mat', battery_id);
     backup_path = fullfile('data/processed', backup_filename);
     save(backup_path, 'cycles');
