@@ -5,59 +5,59 @@
 
 clear; clc; close all;
 fprintf('========================================\n');
-fprintf('🔋 BATTERY BMS PROJECT - SANITY CHECK\n');
+fprintf('BATTERY BMS PROJECT - SANITY CHECK\n');
 fprintf('========================================\n\n');
 
 %% ========== 1. MATLAB VERSION & PATHS ==========
-fprintf('📊 STEP 1: MATLAB Environment Check\n');
+fprintf('STEP 1: MATLAB Environment Check\n');
 fprintf('----------------------------------------\n');
 
 % Print MATLAB version
 v = ver('MATLAB');
-fprintf('✅ MATLAB Version: %s (%s)\n', v.Version, v.Release);
-fprintf('✅ MATLAB Installed: Yes\n');
+fprintf('MATLAB Version: %s (%s)\n', v.Version, v.Release);
+fprintf('MATLAB Installed: Yes\n');
 
 % Get current folder
 current_dir = pwd;
-fprintf('📁 Current folder: %s\n', current_dir);
+fprintf('Current folder: %s\n', current_dir);
 
 % FIXED: Set project root manually based on your actual path
 project_root = 'C:\Users\Krupal Babariya\Desktop\battery-bms-ecm-soc-soh';
-fprintf('📁 Project root set to: %s\n', project_root);
+fprintf('Project root set to: %s\n', project_root);
 
 % Verify project root exists
 if ~exist(project_root, 'dir')
-    error('❌ Project root not found at: %s', project_root);
+    error('Project root not found at: %s\nCheck if the path is correct!', project_root);
 end
 
 % Add project paths (only if not already added)
 matlab_path = fullfile(project_root, 'matlab');
 if ~contains(path, matlab_path)
     addpath(genpath(matlab_path));
-    fprintf('✅ Added MATLAB folders to path\n');
+    fprintf('Added MATLAB folders to path\n');
 else
-    fprintf('⏩ MATLAB folders already in path\n');
+    fprintf('MATLAB folders already in path\n');
 end
 fprintf('\n');
 
 %% ========== 2. VERIFY DATA FILES ==========
-fprintf('📂 STEP 2: Data Files Check\n');
+fprintf('STEP 2: Data Files Check\n');
 fprintf('----------------------------------------\n');
 
 % FIXED: Use correct processed folder path
 processed_path = fullfile(project_root, 'data', 'processed');
-fprintf('🔍 Looking for processed data in: %s\n', processed_path);
+fprintf('Looking for processed data in: %s\n', processed_path);
 
 if ~exist(processed_path, 'dir')
-    error('❌ Processed folder not found at:\n   %s\n\nPlease run organize_nasa_by_battery.m first', processed_path);
+    error('Processed folder not found at:\n   %s\n\nPlease run organize_nasa_by_battery.m first', processed_path);
 end
 
 % List all battery files
 battery_files = dir(fullfile(processed_path, 'battery_*.mat'));
-fprintf('📁 Found %d battery files in data/processed/\n', length(battery_files));
+fprintf('Found %d battery files in data/processed/\n', length(battery_files));
 
 if length(battery_files) == 0
-    error('❌ No battery files found! Please run organize_nasa_by_battery.m first');
+    error('No battery files found! Please run organize_nasa_by_battery.m first');
 end
 
 % Pick one battery to test
@@ -71,23 +71,23 @@ if ~exist(test_file, 'file')
     test_battery = strrep(name, 'battery_', '');
 end
 
-fprintf('✅ Test battery: %s\n', test_battery);
-fprintf('📂 Loading: %s\n', test_file);
+fprintf('Test battery: %s\n', test_battery);
+fprintf('Loading: %s\n', test_file);
 
 % Load the battery data
 load(test_file, 'BatteryData');
 
 % Check structure fields
-fprintf('✅ Loaded successfully\n');
+fprintf('Loaded successfully\n');
 if isfield(BatteryData, 'cycles')
-    fprintf('📊 Total cycles: %d\n', length(BatteryData.cycles));
+    fprintf('Total cycles: %d\n', length(BatteryData.cycles));
 else
-    error('❌ BatteryData has no cycles field! Structure may be corrupted.');
+    error('BatteryData has no cycles field! Structure may be corrupted.');
 end
 fprintf('\n');
 
 %% ========== 3. EXPLORE MATLAB TABLES ==========
-fprintf('📊 STEP 3: Working with Tables (readtable)\n');
+fprintf('STEP 3: Working with Tables (readtable)\n');
 fprintf('----------------------------------------\n');
 
 % Find first discharge cycle
@@ -100,54 +100,54 @@ for i = 1:length(BatteryData.cycles)
 end
 
 if isempty(discharge_idx)
-    error('❌ No discharge cycle found in battery %s!', test_battery);
+    error('No discharge cycle found in battery %s!', test_battery);
 end
 
 % Get the discharge data (this is a MATLAB TABLE)
 discharge_data = BatteryData.cycles(discharge_idx).data;
-fprintf('✅ Found discharge cycle #%d\n', discharge_idx);
-fprintf('📋 Table dimensions: %d rows, %d columns\n', size(discharge_data,1), size(discharge_data,2));
-fprintf('📋 Column names: %s\n', strjoin(discharge_data.Properties.VariableNames, ', '));
+fprintf('Found discharge cycle number %d\n', discharge_idx);
+fprintf('Table dimensions: %d rows, %d columns\n', size(discharge_data,1), size(discharge_data,2));
+fprintf('Column names: %s\n', strjoin(discharge_data.Properties.VariableNames, ', '));
 
 % Display first 3 rows
-fprintf('\n📋 First 3 rows of data:\n');
+fprintf('\nFirst 3 rows of data:\n');
 disp(discharge_data(1:min(3, height(discharge_data)), :));
 fprintf('\n');
 
 %% ========== 4. EXPLORE MATLAB STRUCTS ==========
-fprintf('📦 STEP 4: Working with Structs (S.field)\n');
+fprintf('STEP 4: Working with Structs (S.field)\n');
 fprintf('----------------------------------------\n');
 
 % Display BatteryData structure fields
-fprintf('📦 BatteryData fields:\n');
+fprintf('BatteryData fields:\n');
 fields = fieldnames(BatteryData);
 for i = 1:length(fields)
     field_value = BatteryData.(fields{i});
     if isstruct(field_value) || istable(field_value)
-        fprintf('   • %s: (%s)\n', fields{i}, class(field_value));
+        fprintf('   - %s: (%s)\n', fields{i}, class(field_value));
     else
-        fprintf('   • %s: %s\n', fields{i}, char(field_value));
+        fprintf('   - %s: %s\n', fields{i}, char(field_value));
     end
 end
 
 % Display cycle structure
-fprintf('\n🔋 First cycle structure:\n');
+fprintf('\nFirst cycle structure:\n');
 if ~isempty(BatteryData.cycles)
     cycle_fields = fieldnames(BatteryData.cycles(1));
     for i = 1:length(cycle_fields)
         value = BatteryData.cycles(1).(cycle_fields{i});
         if isstruct(value) || istable(value)
-            fprintf('   • %s: (%s', cycle_fields{i}, class(value));
+            fprintf('   - %s: (%s', cycle_fields{i}, class(value));
             if istable(value)
                 fprintf(', %dx%d', size(value,1), size(value,2));
             end
             fprintf(')\n');
         elseif ischar(value)
-            fprintf('   • %s: %s\n', cycle_fields{i}, value);
+            fprintf('   - %s: %s\n', cycle_fields{i}, value);
         elseif isnumeric(value) && isscalar(value)
-            fprintf('   • %s: %g\n', cycle_fields{i}, value);
+            fprintf('   - %s: %g\n', cycle_fields{i}, value);
         else
-            fprintf('   • %s: (%s', cycle_fields{i}, class(value));
+            fprintf('   - %s: (%s', cycle_fields{i}, class(value));
             if isnumeric(value)
                 fprintf(', %s', mat2str(size(value)));
             end
@@ -158,7 +158,7 @@ end
 fprintf('\n');
 
 %% ========== 5. PLOTTING ==========
-fprintf('📈 STEP 5: Plotting (plot, subplot)\n');
+fprintf('STEP 5: Plotting (plot, subplot)\n');
 fprintf('----------------------------------------\n');
 
 % Create figure with subplots
@@ -210,7 +210,7 @@ if ismember('Temperature_measured', discharge_data.Properties.VariableNames)
     temp = discharge_data.Temperature_measured;
     plot(time, temp, 'g-', 'LineWidth', 1.5);
     xlabel('Time (s)');
-    ylabel('Temperature (°C)');
+    ylabel('Temperature (C)');
     title('Battery Temperature');
     grid on;
     if max(time) > 0
@@ -236,10 +236,10 @@ else
 end
 
 sgtitle(sprintf('MATLAB Sanity Check - %s', datestr(now)), 'FontSize', 14, 'FontWeight', 'bold');
-fprintf('✅ Created figure with 4 subplots\n\n');
+fprintf('Created figure with 4 subplots\n\n');
 
 %% ========== 6. SAVE & LOAD EXAMPLE ==========
-fprintf('💾 STEP 6: Save/Load .mat Files\n');
+fprintf('STEP 6: Save/Load .mat Files\n');
 fprintf('----------------------------------------\n');
 
 % Create a small workspace to save
@@ -252,26 +252,26 @@ example_info.timestamp = datestr(now);
 % Save to file
 test_save_path = fullfile(processed_path, 'test_save.mat');
 save(test_save_path, 'example_data', 'example_info');
-fprintf('✅ Saved test file: %s\n', test_save_path);
+fprintf('Saved test file: %s\n', test_save_path);
 
 % Clear and load back
 clear example_data example_info;
 load(test_save_path, 'example_data', 'example_info');
-fprintf('✅ Loaded test file successfully\n');
-fprintf('   📊 example_data: %d rows, %d columns\n', size(example_data,1), size(example_data,2));
-fprintf('   📝 example_info.battery: %s\n', example_info.battery);
-fprintf('   📝 example_info.cycle: %d\n', example_info.cycle);
+fprintf('Loaded test file successfully\n');
+fprintf('   example_data: %d rows, %d columns\n', size(example_data,1), size(example_data,2));
+fprintf('   example_info.battery: %s\n', example_info.battery);
+fprintf('   example_info.cycle: %d\n', example_info.cycle);
 
 %% ========== 7. SUMMARY ==========
 fprintf('\n========================================\n');
-fprintf('🎉 SANITY CHECK PASSED!\n');
+fprintf('SANITY CHECK PASSED!\n');
 fprintf('========================================\n');
-fprintf('✅ You have successfully:\n');
+fprintf('You have successfully:\n');
 fprintf('   1. Checked MATLAB version and paths\n');
 fprintf('   2. Verified your organized battery data\n');
 fprintf('   3. Worked with TABLES (readtable)\n');
 fprintf('   4. Worked with STRUCTS (BatteryData.cycles)\n');
 fprintf('   5. Created PLOTS with subplots\n');
 fprintf('   6. Saved and loaded .MAT files\n\n');
-fprintf('📚 These are ALL the MATLAB skills you need!\n');
+fprintf('These are ALL the MATLAB skills you need!\n');
 fprintf('========================================\n');
