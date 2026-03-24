@@ -6,7 +6,7 @@
 
 clear; clc; close all;
 fprintf('========================================\n');
-fprintf('🧹 BATCH IMPORT & CLEAN - NASA DATASET\n');
+fprintf('BATCH IMPORT AND CLEAN - NASA DATASET\n');
 fprintf('========================================\n\n');
 
 %% ========== SETUP PATHS ==========
@@ -21,22 +21,22 @@ end
 processed_path = fullfile(project_root, 'data', 'processed');
 clean_path = fullfile(project_root, 'data', 'clean');
 
-fprintf('📁 Project root: %s\n', project_root);
-fprintf('📁 Looking for data in: %s\n', processed_path);
+fprintf('Project root: %s\n', project_root);
+fprintf('Looking for data in: %s\n', processed_path);
 
 % Create clean folder if it doesn't exist
 if ~exist(clean_path, 'dir')
     mkdir(clean_path);
-    fprintf('📁 Created: %s\n', clean_path);
+    fprintf('Created folder: %s\n', clean_path);
 end
 
 %% ========== FIND ALL BATTERY FILES ==========
 battery_files = dir(fullfile(processed_path, 'battery_*.mat'));
-fprintf('📁 Found %d battery files\n\n', length(battery_files));
+fprintf('Found %d battery files\n\n', length(battery_files));
 
 % FIX: Check if files exist
 if isempty(battery_files)
-    error('❌ No battery files found in %s\nPlease run organize_nasa_by_battery.m first', processed_path);
+    error('No battery files found in %s\nPlease run organize_nasa_by_battery.m first', processed_path);
 end
 
 %% ========== PROCESS EACH BATTERY ==========
@@ -49,7 +49,7 @@ for b = 1:length(battery_files)
     load(battery_file, 'BatteryData');
     
     battery_id = BatteryData.battery_id;
-    fprintf('🔄 [%d/%d] Processing %s...\n', b, length(battery_files), battery_id);
+    fprintf('[%d/%d] Processing %s...\n', b, length(battery_files), battery_id);
     
     % Create battery folder in clean directory
     battery_clean_path = fullfile(clean_path, battery_id);
@@ -84,21 +84,21 @@ for b = 1:length(battery_files)
             cycle_count = cycle_count + 1;
             
         catch ME
-            fprintf('   ❌ Cycle %d (%s): %s\n', i, cycle_type, ME.message);
+            fprintf('   Cycle %d (%s): %s\n', i, cycle_type, ME.message);
         end
     end
     
-    fprintf('   ✅ Saved %d clean cycles\n', cycle_count);
+    fprintf('   Saved %d clean cycles\n', cycle_count);
     total_cycles = total_cycles + n_cycles;
     total_clean_cycles = total_clean_cycles + cycle_count;
 end
 
 %% ========== SUMMARY ==========
 fprintf('\n========================================\n');
-fprintf('🎉 BATCH PROCESSING COMPLETE!\n');
+fprintf('BATCH PROCESSING COMPLETE!\n');
 fprintf('========================================\n');
-fprintf('   📁 Processed: %d batteries\n', length(battery_files));
-fprintf('   🔄 Total raw cycles: %d\n', total_cycles);
-fprintf('   ✨ Clean cycles saved: %d\n', total_clean_cycles);
-fprintf('   💾 Output: %s\n', clean_path);
+fprintf('   Processed: %d batteries\n', length(battery_files));
+fprintf('   Total raw cycles: %d\n', total_cycles);
+fprintf('   Clean cycles saved: %d\n', total_clean_cycles);
+fprintf('   Output location: %s\n', clean_path);
 fprintf('========================================\n');
