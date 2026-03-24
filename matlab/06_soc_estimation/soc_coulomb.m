@@ -18,51 +18,45 @@
 function [SOC, Q_removed, info] = soc_coulomb(I, t, Q_nom, SOC0, I_bias)
     % SOC_COULOMB Coulomb counting SOC estimation with bias correction
     
-    %% ========== INPUT PARSING ==========
+    %% INPUT PARSING
     if nargin < 4 || isempty(SOC0)
-        SOC0 = 1.0;  % Default: start fully charged
+        SOC0 = 1.0;
     end
     
     if nargin < 5 || isempty(I_bias)
-        I_bias = 0;  % Default: no bias
+        I_bias = 0;
     end
     
-    % Ensure vectors are column vectors
     I = I(:);
     t = t(:);
     
     if length(I) ~= length(t)
-        error('❌ Current and time vectors must have same length');
+        error('Current and time vectors must have same length');
     end
     
     N = length(I);
     
-    %% ========== CALCULATE TIME STEPS ==========
-    dt = [0; diff(t)];  % Time steps (first step = 0)
+    %% CALCULATE TIME STEPS
+    dt = [0; diff(t)];
     
-    %% ========== APPLY BIAS CORRECTION ==========
-    % Remove sensor bias from current measurement
+    %% APPLY BIAS CORRECTION
     I_corrected = I - I_bias;
     
-    % For very small currents, treat as zero (prevents drift during rest)
-    I_threshold = 0.01;  % 10mA threshold
+    I_threshold = 0.01;
     I_corrected(abs(I_corrected) < I_threshold) = 0;
     
-    %% ========== COULOMB COUNTING ==========
-    % Calculate charge transferred in each step (As)
-    dQ = I_corrected .* dt;  % Positive for charge, negative for discharge
+    %% COULOMB COUNTING
+    dQ = I_corrected .* dt;
     
-    % Convert to Ah and accumulate
-    dQ_Ah = dQ / 3600;  % Convert As to Ah
-    Q_removed = cumsum(-dQ_Ah);  % Negative sign: discharge decreases SOC
+    dQ_Ah = dQ / 3600;
+    Q_removed = cumsum(-dQ_Ah);
     
-    % SOC calculation
-    SOC = SOC0 - Q_removed / Q_nom;  % Q_removed is positive for discharge
+    SOC = SOC0 - Q_removed / Q_nom;
     
-    %% ========== CLAMP SOC TO [0, 1] ==========
+    %% CLAMP SOC TO [0, 1]
     SOC = max(min(SOC, 1), 0);
     
-    %% ========== CREATE INFO STRUCTURE ==========
+    %% CREATE INFO STRUCTURE
     info = struct();
     info.method = 'Coulomb counting';
     info.Q_nom = Q_nom;
@@ -73,10 +67,10 @@ function [SOC, Q_removed, info] = soc_coulomb(I, t, Q_nom, SOC0, I_bias)
     info.Q_removed_cumulative = Q_removed;
     info.final_SOC = SOC(end);
     info.total_capacity_used = Q_removed(end);
-    info.charge_transferred = sum(dQ_Ah(dQ_Ah > 0));  % Total charge in
-    info.discharge_transferred = -sum(dQ_Ah(dQ_Ah < 0));  % Total charge out
+    info.charge_transferred = sum(dQ_Ah(dQ_Ah > 0));
+    info.discharge_transferred = -sum(dQ_Ah(dQ_Ah < 0));
     
-    fprintf('🔋 Coulomb Counting SOC:\n');
+    fprintf('Coulomb Counting SOC:\n');
     fprintf('   Initial SOC: %.3f\n', SOC0);
     fprintf('   Final SOC: %.3f\n', SOC(end));
     fprintf('   Capacity used: %.3f Ah\n', Q_removed(end));
