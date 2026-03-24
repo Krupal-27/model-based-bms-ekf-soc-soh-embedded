@@ -193,7 +193,7 @@ validation_script
 
 ⬜ 2-RC model implementation
 ⬜ Temperature-dependent parameters
-⬜ EKF/UKF based SOC estimation
+⬜ UKF based SOC estimation
 ⬜ Online parameter identification
 ⬜ Real-time HIL testing
 
