@@ -9,13 +9,12 @@ cd('C:\Users\Krupal Babariya\Desktop\battery-bms-ecm-soc-soh\');
 addpath(genpath('matlab'));
 
 fprintf('========================================\n');
-fprintf('🔍 SELECTING FITTING CYCLE\n');
+fprintf('SELECTING FITTING CYCLE\n');
 fprintf('========================================\n\n');
 
-%% ========== LOAD ALL CYCLES ==========
+%% LOAD ALL CYCLES
 load('data/processed/cell01_cycles.mat', 'cycles');
 
-% Find all discharge cycles
 discharge_indices = [];
 for i = 1:length(cycles)
     if strcmp(cycles(i).type, 'discharge')
@@ -23,10 +22,10 @@ for i = 1:length(cycles)
     end
 end
 
-fprintf('📊 Found %d discharge cycles\n\n', length(discharge_indices));
+fprintf('Found %d discharge cycles\n\n', length(discharge_indices));
 
-%% ========== ANALYZE EACH DISCHARGE CYCLE ==========
-fprintf('📊 Analyzing discharge cycles:\n');
+%% ANALYZE EACH DISCHARGE CYCLE
+fprintf('Analyzing discharge cycles:\n');
 fprintf('   %-5s %-10s %-12s %-12s %-12s\n', ...
     'Idx', 'Cycle#', 'Duration(s)', 'I_mean(A)', 'I_std(A)');
 
@@ -37,7 +36,6 @@ for idx = 1:min(10, length(discharge_indices))
     cycle_num = discharge_indices(idx);
     d = cycles(cycle_num);
     
-    % Trim to actual discharge
     current_threshold = 0.1;
     start_idx = find(abs(d.I) > current_threshold, 1, 'first');
     end_idx = find(abs(d.I) > current_threshold, 1, 'last');
@@ -49,8 +47,7 @@ for idx = 1:min(10, length(discharge_indices))
     I_mean = mean(abs(I_seg));
     I_std = std(I_seg);
     
-    % Measure of dynamics (how much current varies)
-    dynamics = I_std / I_mean;  % Higher = more variation
+    dynamics = I_std / I_mean;
     
     fprintf('   %3d   %6d   %10.1f   %10.3f   %10.3f  %s\n', ...
         idx, cycle_num, duration, I_mean, I_std, ...
@@ -62,13 +59,12 @@ for idx = 1:min(10, length(discharge_indices))
     end
 end
 
-fprintf('\n✅ Best cycle for fitting: Cycle #%d\n', best_cycle);
+fprintf('\nBest cycle for fitting: Cycle #%d\n', best_cycle);
 fprintf('   (Highest current variation: %.3f)\n\n', best_dynamics);
 
-%% ========== PLOT THE SELECTED CYCLE ==========
+%% PLOT THE SELECTED CYCLE
 d = cycles(best_cycle);
 
-% Trim
 start_idx = find(abs(d.I) > 0.1, 1, 'first');
 end_idx = find(abs(d.I) > 0.1, 1, 'last');
 t_fit = d.time(start_idx:end_idx) - d.time(start_idx);
@@ -91,7 +87,7 @@ grid on;
 
 sgtitle('Selected Cycle for Parameter Fitting', 'FontSize', 14);
 
-%% ========== SAVE FITTING DATA ==========
+%% SAVE FITTING DATA
 fitting_data.time = t_fit;
 fitting_data.V = V_fit;
 fitting_data.I = I_fit;
@@ -99,4 +95,4 @@ fitting_data.Q = d.Q;
 fitting_data.cycle_num = best_cycle;
 
 save('data/processed/fitting_cycle.mat', 'fitting_data');
-fprintf('💾 Saved fitting data to data/processed/fitting_cycle.mat\n');
+fprintf('Saved fitting data to data/processed/fitting_cycle.mat\n');
