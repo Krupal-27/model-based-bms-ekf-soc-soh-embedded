@@ -7,7 +7,7 @@
 %       .time - time vector (s)
 %       .I    - current vector (A)
 %       .V    - voltage vector (V)
-%       .T    - temperature vector (°C)
+%       .T    - temperature vector (C)
 %       .step - cell array of labels
 %
 % Output:
@@ -30,46 +30,38 @@ function cycles = segment_cycles(clean_data, I_thr)
     %       .time       - time vector (s)
     %       .I          - current vector (A)
     %       .V          - voltage vector (V)
-    %       .T          - temperature vector (°C)
+    %       .T          - temperature vector (C)
     %       .duration   - cycle duration (s)
     %       .I_avg      - average current (A)
     %       .V_min      - minimum voltage (V)
     %       .V_max      - maximum voltage (V)
     %       .Q          - capacity (Ah) for discharge cycles
     
-    %% ========== STEP 1: SET DEFAULTS ==========
+    %% STEP 1: SET DEFAULTS
     if nargin < 2
-        I_thr = 0.1;  % 100mA threshold
+        I_thr = 0.1;
     end
     
-    fprintf('🔍 Segmenting cycles (I_thr = ±%.2f A)...\n', I_thr);
+    fprintf('Segmenting cycles (I_thr = +/- %.2f A)...\n', I_thr);
     
-    %% ========== STEP 2: DETECT CYCLE STATES ==========
+    %% STEP 2: DETECT CYCLE STATES
     I = clean_data.I;
     time = clean_data.time;
     V = clean_data.V;
     T = clean_data.T;
     
-    % Initialize state array
-    % 1 = discharge, 2 = charge, 3 = rest
     state = zeros(length(I), 1);
     
-    % Detect discharge (current < -threshold)
     state(I < -I_thr) = 1;
-    
-    % Detect charge (current > +threshold)
     state(I > I_thr) = 2;
-    
-    % Everything else is rest
     state(state == 0) = 3;
     
-    %% ========== STEP 3: FIND TRANSITIONS ==========
-    % Find where state changes
+    %% STEP 3: FIND TRANSITIONS
     transitions = [1; find(diff(state) ~= 0) + 1; length(state) + 1];
     
     fprintf('   Found %d state transitions\n', length(transitions)-1);
     
-    %% ========== STEP 4: GROUP INTO CYCLES ==========
+    %% STEP 4: GROUP INTO CYCLES
     cycles = struct();
     cycle_count = 0;
     
@@ -77,14 +69,12 @@ function cycles = segment_cycles(clean_data, I_thr)
         start_idx = transitions(i);
         end_idx = transitions(i+1) - 1;
         
-        % Skip if segment is too short (< 5 samples)
         if end_idx - start_idx < 5
             continue;
         end
         
         current_state = state(start_idx);
         
-        % Determine cycle type
         switch current_state
             case 1
                 type = 'discharge';
@@ -94,36 +84,31 @@ function cycles = segment_cycles(clean_data, I_thr)
                 type = 'rest';
         end
         
-        % Extract segment data
         cycle_count = cycle_count + 1;
         
         cycles(cycle_count).type = type;
         cycles(cycle_count).start_idx = start_idx;
         cycles(cycle_count).end_idx = end_idx;
-        cycles(cycle_count).time = time(start_idx:end_idx) - time(start_idx);  % Relative time
+        cycles(cycle_count).time = time(start_idx:end_idx) - time(start_idx);
         cycles(cycle_count).I = I(start_idx:end_idx);
         cycles(cycle_count).V = V(start_idx:end_idx);
         cycles(cycle_count).T = T(start_idx:end_idx);
         
-        % Calculate cycle statistics
         cycles(cycle_count).duration = time(end_idx) - time(start_idx);
         cycles(cycle_count).I_avg = mean(I(start_idx:end_idx));
         cycles(cycle_count).V_min = min(V(start_idx:end_idx));
         cycles(cycle_count).V_max = max(V(start_idx:end_idx));
         
-        % Calculate capacity for discharge cycles (Ah)
         if strcmp(type, 'discharge')
-            % Capacity = ∫ I dt, I is negative so we take absolute
             dt = mean(diff(time(start_idx:end_idx)));
-            cycles(cycle_count).Q = sum(abs(I(start_idx:end_idx))) * dt / 3600;  % Ah
+            cycles(cycle_count).Q = sum(abs(I(start_idx:end_idx))) * dt / 3600;
         elseif strcmp(type, 'charge')
-            % For charge cycles, also calculate capacity
             dt = mean(diff(time(start_idx:end_idx)));
-            cycles(cycle_count).Q = sum(I(start_idx:end_idx)) * dt / 3600;  % Ah
+            cycles(cycle_count).Q = sum(I(start_idx:end_idx)) * dt / 3600;
         end
     end
     
-    fprintf('   ✅ Extracted %d cycles (%d discharge, %d charge, %d rest)\n', ...
+    fprintf('   Extracted %d cycles (%d discharge, %d charge, %d rest)\n', ...
         cycle_count, ...
         sum(strcmp({cycles.type}, 'discharge')), ...
         sum(strcmp({cycles.type}, 'charge')), ...
