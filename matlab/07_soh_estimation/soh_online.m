@@ -23,47 +23,45 @@ function [SOH_history, stats] = soh_online(cycles, ocv_data, params0, options)
     %       .cycle_numbers - Cycle indices
     %       .Q            - Capacity estimates (Ah)
     %       .SOH_Q        - Capacity-based SOH (%)
-    %       .R0           - Resistance estimates (Ω)
+    %       .R0           - Resistance estimates (Ohm)
     %       .SOH_R        - Resistance-based SOH (%)
     %       .SOH_fused    - Fused SOH (%)
     %       .SOH_smoothed - Smoothed fused SOH
     %   stats - Statistics structure
     
     fprintf('========================================\n');
-    fprintf('🔋 ONLINE SOH ESTIMATION\n');
+    fprintf('ONLINE SOH ESTIMATION\n');
     fprintf('========================================\n\n');
     
-    %% ========== PARSE INPUTS ==========
+    %% PARSE INPUTS
     if nargin < 4
         options = struct();
     end
     
-    % Default options
     if ~isfield(options, 'R_fit_interval')
-        options.R_fit_interval = 10;  % Re-fit R0 every 10 cycles
+        options.R_fit_interval = 10;
     end
     if ~isfield(options, 'smooth_window')
-        options.smooth_window = 3;     % Moving average window
+        options.smooth_window = 3;
     end
     if ~isfield(options, 'plot_results')
         options.plot_results = true;
     end
     if ~isfield(options, 'min_points')
-        options.min_points = 100;      % Min points for valid discharge
+        options.min_points = 100;
     end
     
-    fprintf('📊 Options:\n');
+    fprintf('Options:\n');
     fprintf('   R0 re-fit interval: %d cycles\n', options.R_fit_interval);
     fprintf('   Smoothing window: %d\n', options.smooth_window);
     fprintf('   Min points for discharge: %d\n\n', options.min_points);
     
-    %% ========== FIND ALL DISCHARGE CYCLES ==========
-    fprintf('🔍 Scanning for discharge cycles...\n');
+    %% FIND ALL DISCHARGE CYCLES
+    fprintf('Scanning for discharge cycles...\n');
     
     discharge_indices = [];
     for i = 1:length(cycles)
         if strcmp(cycles(i).type, 'discharge')
-            % Check if it has enough points
             if length(cycles(i).time) > options.min_points
                 discharge_indices = [discharge_indices, i];
             end
@@ -71,39 +69,36 @@ function [SOH_history, stats] = soh_online(cycles, ocv_data, params0, options)
     end
     
     n_cycles = length(discharge_indices);
-    fprintf('✅ Found %d valid discharge cycles\n\n', n_cycles);
+    fprintf('Found %d valid discharge cycles\n\n', n_cycles);
     
     if n_cycles == 0
         error('No valid discharge cycles found');
     end
     
-    %% ========== INITIALIZE STORAGE ==========
+    %% INITIALIZE STORAGE
     cycle_numbers = discharge_indices;
     Q_est = zeros(n_cycles, 1);
     R0_est = zeros(n_cycles, 1);
-    R0_est(:) = NaN;  % Initialize with NaN (will fill when fitted)
+    R0_est(:) = NaN;
     SOH_Q = zeros(n_cycles, 1);
     SOH_R = zeros(n_cycles, 1);
     SOH_fused = zeros(n_cycles, 1);
     
-    % Initial parameters
     R0_fresh = params0.R0;
     Q_fresh = params0.Q_nom;
     
-    %% ========== PROCESS EACH CYCLE ==========
-    fprintf('🔄 Processing %d cycles...\n', n_cycles);
+    %% PROCESS EACH CYCLE
+    fprintf('Processing %d cycles...\n', n_cycles);
     
     for k = 1:n_cycles
         cycle_idx = cycle_numbers(k);
         d = cycles(cycle_idx);
         
-        % Progress indicator
         if mod(k, 10) == 0 || k == 1 || k == n_cycles
             fprintf('   Cycle %3d/%d (index %d)...\n', k, n_cycles, cycle_idx);
         end
         
-        %% ========== CAPACITY ESTIMATION (EVERY CYCLE) ==========
-        % Find actual discharge portion
+        %% CAPACITY ESTIMATION (EVERY CYCLE)
         current_threshold = 0.1;
         start_idx = find(abs(d.I) > current_threshold, 1, 'first');
         end_idx = find(abs(d.I) > current_threshold, 1, 'last');
@@ -112,11 +107,9 @@ function [SOH_history, stats] = soh_online(cycles, ocv_data, params0, options)
             t_disc = d.time(start_idx:end_idx) - d.time(start_idx);
             I_disc = d.I(start_idx:end_idx);
             
-            % Coulomb counting for capacity
             dt = mean(diff(t_disc));
-            Q_est(k) = sum(abs(I_disc)) * dt / 3600;  % Ah
+            Q_est(k) = sum(abs(I_disc)) * dt / 3600;
         else
-            % If no valid discharge, use previous estimate
             if k > 1
                 Q_est(k) = Q_est(k-1);
             else
@@ -124,56 +117,48 @@ function [SOH_history, stats] = soh_online(cycles, ocv_data, params0, options)
             end
         end
         
-        % Capacity-based SOH
         SOH_Q(k) = Q_est(k) / Q_fresh * 100;
         
-       %% ========== RESISTANCE ESTIMATION - USE STEADY-STATE CURRENT ==========
-if mod(k, options.R_fit_interval) == 1 || k == 1 || k == n_cycles
-    try
-        if ~isempty(start_idx) && ~isempty(end_idx)
-            % Find where current stabilizes (after ramp-up)
-            steady_idx = start_idx + 100;  % Skip first 100 points
-            
-            if steady_idx < end_idx
-                I_steady = abs(d.I(steady_idx));
-                V_steady = d.V(steady_idx);
-                
-                % OCV just before discharge starts
-                pre_start = max(1, start_idx - 10);
-                if pre_start < start_idx
-                    OCV_start = mean(d.V(pre_start:start_idx-1));
-                else
-                    OCV_start = d.V(start_idx);
+        %% RESISTANCE ESTIMATION
+        if mod(k, options.R_fit_interval) == 1 || k == 1 || k == n_cycles
+            try
+                if ~isempty(start_idx) && ~isempty(end_idx)
+                    steady_idx = start_idx + 100;
+                    
+                    if steady_idx < end_idx
+                        I_steady = abs(d.I(steady_idx));
+                        V_steady = d.V(steady_idx);
+                        
+                        pre_start = max(1, start_idx - 10);
+                        if pre_start < start_idx
+                            OCV_start = mean(d.V(pre_start:start_idx-1));
+                        else
+                            OCV_start = d.V(start_idx);
+                        end
+                        
+                        R0_est(k) = (OCV_start - V_steady) / I_steady;
+                        R0_est(k) = max(min(R0_est(k), 0.5), 0.01);
+                        
+                        fprintf('   Steady I = %.3f A, V = %.3f V, R0 = %.1f mOhm\n', ...
+                            I_steady, V_steady, R0_est(k)*1000);
+                    else
+                        if k > 1
+                            R0_est(k) = R0_est(k-1);
+                        end
+                    end
                 end
-                
-                % Calculate R0 using steady-state point
-                R0_est(k) = (OCV_start - V_steady) / I_steady;
-                
-                % Ensure reasonable bounds
-                R0_est(k) = max(min(R0_est(k), 0.5), 0.01);
-                
-                fprintf('   Steady I = %.3f A, V = %.3f V, R0 = %.1f mΩ\n', ...
-                    I_steady, V_steady, R0_est(k)*1000);
-            else
-                if k > 1
+            catch ME
+                fprintf('   R0 estimation failed: %s\n', ME.message);
+                if k > 1 && ~isnan(R0_est(k-1))
                     R0_est(k) = R0_est(k-1);
                 end
             end
+        else
+            if k > 1
+                R0_est(k) = R0_est(k-1);
+            end
         end
-    catch ME
-        fprintf('   ⚠️  R0 estimation failed: %s\n', ME.message);
-        if k > 1 && ~isnan(R0_est(k-1))
-            R0_est(k) = R0_est(k-1);
-        end
-    end
-else
-    if k > 1
-        R0_est(k) = R0_est(k-1);
-    end
-end
-       
-
-      % Resistance-based SOH (R0 increases with age)
+        
         if ~isnan(R0_est(k)) && R0_est(k) > 0
             SOH_R(k) = R0_fresh / R0_est(k) * 100;
         else
@@ -185,23 +170,21 @@ end
         end
     end
     
-    %% ========== FUSE SOH ESTIMATES ==========
-    fprintf('\n🔄 Fusing SOH estimates...\n');
+    %% FUSE SOH ESTIMATES
+    fprintf('\nFusing SOH estimates...\n');
     
-    % Weights (capacity is primary, resistance is secondary)
     wQ = 0.7;
     wR = 0.3;
     
     SOH_fused = wQ * SOH_Q + wR * SOH_R;
     
-    % Apply moving average smoothing
     if options.smooth_window > 1
         SOH_smoothed = movmean(SOH_fused, options.smooth_window);
     else
         SOH_smoothed = SOH_fused;
     end
     
-    %% ========== CREATE OUTPUT STRUCTURE ==========
+    %% CREATE OUTPUT STRUCTURE
     SOH_history = struct();
     SOH_history.cycle_numbers = cycle_numbers;
     SOH_history.Q = Q_est;
@@ -212,21 +195,20 @@ end
     SOH_history.SOH_smoothed = SOH_smoothed;
     SOH_history.weights = struct('wQ', wQ, 'wR', wR);
     
-    %% ========== CALCULATE STATISTICS ==========
+    %% CALCULATE STATISTICS
     stats = struct();
     stats.n_cycles = n_cycles;
     stats.Q_initial = Q_est(1);
     stats.Q_final = Q_est(end);
     stats.Q_fade_percent = (1 - Q_est(end)/Q_est(1)) * 100;
-    stats.Q_fade_rate = (Q_est(1) - Q_est(end)) / n_cycles * 1000;  % mAh/cycle
+    stats.Q_fade_rate = (Q_est(1) - Q_est(end)) / n_cycles * 1000;
     
-    % R0 statistics
     valid_R0 = R0_est(~isnan(R0_est));
     if ~isempty(valid_R0)
         stats.R0_initial = valid_R0(1);
         stats.R0_final = valid_R0(end);
         stats.R0_increase_percent = (valid_R0(end)/valid_R0(1) - 1) * 100;
-        stats.R0_growth_rate = (valid_R0(end) - valid_R0(1)) / length(valid_R0) * 1000;  % mΩ/cycle
+        stats.R0_growth_rate = (valid_R0(end) - valid_R0(1)) / length(valid_R0) * 1000;
     else
         stats.R0_initial = NaN;
         stats.R0_final = NaN;
@@ -234,42 +216,38 @@ end
         stats.R0_growth_rate = NaN;
     end
     
-    % SOH statistics
     stats.SOH_initial = SOH_smoothed(1);
     stats.SOH_final = SOH_smoothed(end);
     stats.SOH_fade_percent = 100 - SOH_smoothed(end);
-    stats.SOH_fade_rate = (SOH_smoothed(1) - SOH_smoothed(end)) / n_cycles;  % %/cycle
+    stats.SOH_fade_rate = (SOH_smoothed(1) - SOH_smoothed(end)) / n_cycles;
     
-    %% ========== PRINT SUMMARY ==========
-    fprintf('\n📊 SOH Estimation Summary:\n');
+    %% PRINT SUMMARY
+    fprintf('\nSOH Estimation Summary:\n');
     fprintf('   Capacity fade: %.1f%% (%.1f mAh/cycle)\n', ...
         stats.Q_fade_percent, stats.Q_fade_rate);
     if ~isnan(stats.R0_initial)
-        fprintf('   R0 increase: %.1f%% (%.1f μΩ/cycle)\n', ...
+        fprintf('   R0 increase: %.1f%% (%.1f uOhm/cycle)\n', ...
             stats.R0_increase_percent, stats.R0_growth_rate*1000);
     end
     fprintf('   SOH final: %.1f%%\n', stats.SOH_final);
     fprintf('   SOH fade rate: %.3f%%/cycle\n', stats.SOH_fade_rate);
     
-    %% ========== PLOT RESULTS ==========
+    %% PLOT RESULTS
     if options.plot_results
         figure('Position', [100, 100, 1600, 1000]);
         
-        % Plot 1: Capacity estimates
         subplot(2,3,1);
         plot(cycle_numbers, Q_est, 'bo-', 'LineWidth', 1.5, 'MarkerSize', 4);
         xlabel('Cycle Number'); ylabel('Capacity (Ah)');
         title(sprintf('Capacity Fade (%.1f mAh/cycle)', stats.Q_fade_rate));
         grid on;
         
-        % Plot 2: R0 estimates
         subplot(2,3,2);
         plot(cycle_numbers, R0_est*1000, 'rs-', 'LineWidth', 1.5, 'MarkerSize', 4);
-        xlabel('Cycle Number'); ylabel('R0 (mΩ)');
-        title(sprintf('Resistance Growth (%.1f μΩ/cycle)', stats.R0_growth_rate*1000));
+        xlabel('Cycle Number'); ylabel('R0 (mOhm)');
+        title(sprintf('Resistance Growth (%.1f uOhm/cycle)', stats.R0_growth_rate*1000));
         grid on;
         
-        % Plot 3: SOH components
         subplot(2,3,3);
         plot(cycle_numbers, SOH_Q, 'b-', 'LineWidth', 1, 'DisplayName', 'SOH_Q (Capacity)'); hold on;
         plot(cycle_numbers, SOH_R, 'r-', 'LineWidth', 1, 'DisplayName', 'SOH_R (Resistance)');
@@ -280,7 +258,6 @@ end
         grid on; ylim([50, 105]);
         yline(80, 'k--', 'EOL', 'LineWidth', 1.5);
         
-        % Plot 4: Smoothed SOH
         subplot(2,3,4);
         plot(cycle_numbers, SOH_fused, 'g.', 'MarkerSize', 6, 'DisplayName', 'Raw'); hold on;
         plot(cycle_numbers, SOH_smoothed, 'b-', 'LineWidth', 2, 'DisplayName', 'Smoothed');
@@ -290,7 +267,6 @@ end
         grid on; ylim([50, 105]);
         yline(80, 'k--', 'EOL', 'LineWidth', 1.5);
         
-        % Plot 5: Fade rate
         subplot(2,3,5);
         fade_rate = -diff(SOH_smoothed);
         plot(cycle_numbers(2:end), fade_rate, 'm-', 'LineWidth', 1);
@@ -298,7 +274,6 @@ end
         title('SOH Fade Rate');
         grid on;
         
-        % Plot 6: EOL prediction
         subplot(2,3,6);
         plot(cycle_numbers, SOH_smoothed, 'b-', 'LineWidth', 2); hold on;
         xlabel('Cycle Number'); ylabel('SOH (%)');
@@ -306,7 +281,6 @@ end
         grid on; ylim([50, 105]);
         yline(80, 'k--', 'EOL (80%)', 'LineWidth', 1.5);
         
-        % Find where SOH crosses 80%
         eol_idx = find(SOH_smoothed <= 80, 1, 'first');
         if ~isempty(eol_idx)
             eol_cycle = cycle_numbers(eol_idx);
@@ -317,5 +291,5 @@ end
         sgtitle('Online SOH Estimation Results', 'FontSize', 14, 'FontWeight', 'bold');
     end
     
-    fprintf('\n✅ Online SOH estimation complete\n');
+    fprintf('\nOnline SOH estimation complete\n');
 end
