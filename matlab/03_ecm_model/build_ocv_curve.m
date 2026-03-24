@@ -10,16 +10,16 @@ function [SOC_lookup, OCV_lookup] = build_ocv_curve(discharge_data, R0, R1, C1, 
         plot_results = true;
     end
     
-    fprintf('🔧 Building OCV-SOC curve...\n');
+    fprintf('Building OCV-SOC curve...\n');
     
-    %% ========== EXTRACT DATA ==========
+    %% EXTRACT DATA
     t = discharge_data.time;
     V = discharge_data.V;
     I = discharge_data.I;
     
     fprintf('   Terminal voltage range: %.3f - %.3f V\n', min(V), max(V));
     
-    %% ========== CALCULATE SOC ==========
+    %% CALCULATE SOC
     Q = discharge_data.Q;
     dt = mean(diff(t));
     dQ = abs(I) * dt;
@@ -27,7 +27,7 @@ function [SOC_lookup, OCV_lookup] = build_ocv_curve(discharge_data, R0, R1, C1, 
     SOC = 1 - Q_removed / (Q * 3600);
     SOC = max(min(SOC, 1), 0);
     
-    %% ========== SIMULATE RC NETWORK ==========
+    %% SIMULATE RC NETWORK
     tau = R1 * C1;
     alpha = exp(-dt / tau);
     V1 = 0;
@@ -40,16 +40,13 @@ function [SOC_lookup, OCV_lookup] = build_ocv_curve(discharge_data, R0, R1, C1, 
     
     fprintf('   Corrected OCV range: %.3f - %.3f V\n', min(OCV_corrected), max(OCV_corrected));
     
-    %% ========== CREATE LOOKUP TABLE ==========
-    % Sort by SOC (ascending)
+    %% CREATE LOOKUP TABLE
     [SOC_sorted, sort_idx] = sort(SOC, 'ascend');
     OCV_sorted = OCV_corrected(sort_idx);
     
-    % Remove duplicates
     [SOC_sorted, unique_idx] = unique(SOC_sorted, 'stable');
     OCV_sorted = OCV_sorted(unique_idx);
     
-    % Smooth
     window = min(21, floor(length(OCV_sorted)/10));
     if window > 3
         OCV_smooth = smoothdata(OCV_sorted, 'movmean', window);
@@ -57,17 +54,15 @@ function [SOC_lookup, OCV_lookup] = build_ocv_curve(discharge_data, R0, R1, C1, 
         OCV_smooth = OCV_sorted;
     end
     
-    % Interpolate to uniform grid
     SOC_lookup = (0:0.01:1)';
     OCV_lookup = interp1(SOC_sorted, OCV_smooth, SOC_lookup, 'pchip', 'extrap');
     
-    % Ensure reasonable bounds
     OCV_lookup = max(OCV_lookup, 2.8);
     OCV_lookup = min(OCV_lookup, 4.3);
     
     fprintf('   Final OCV range: %.3f - %.3f V\n', min(OCV_lookup), max(OCV_lookup));
     
-    %% ========== PLOT ==========
+    %% PLOT
     if plot_results
         figure('Name', 'OCV Construction', 'Position', [100, 100, 1200, 400]);
         
