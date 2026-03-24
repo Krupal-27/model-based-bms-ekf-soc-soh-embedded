@@ -6,7 +6,7 @@
 function [R0, R1, C1, rmse] = fit_1RC_model(discharge_data, ocv_data)
     % FIT_1RC_MODEL Estimate 1-RC parameters
     
-    %% ========== EXTRACT DATA ==========
+    %% EXTRACT DATA
     t = discharge_data.time;
     V = discharge_data.V;
     I = discharge_data.I;
@@ -14,27 +14,26 @@ function [R0, R1, C1, rmse] = fit_1RC_model(discharge_data, ocv_data)
     
     dt = mean(diff(t));
     
-    %% ========== CALCULATE SOC ==========
+    %% CALCULATE SOC
     dQ = abs(I) * dt;
     Q_removed = cumsum(dQ);
     SOC = 1 - Q_removed / (Q * 3600);
     SOC = max(min(SOC, 1), 0);
     
-    %% ========== ESTIMATE R0 ==========
-    % R0 = (OCV - V) / I at start
+    %% ESTIMATE R0
     OCV_start = interp1(ocv_data.SOC, ocv_data.OCV, SOC(1), 'linear', 'extrap');
     R0 = (OCV_start - V(1)) / abs(I(1));
     R0 = max(R0, 0.01);
     R0 = min(R0, 0.3);
     
-    %% ========== ESTIMATE R1 FROM MID-POINT ==========
+    %% ESTIMATE R1 FROM MID-POINT
     mid_idx = floor(length(t)/2);
     OCV_mid = interp1(ocv_data.SOC, ocv_data.OCV, SOC(mid_idx), 'linear', 'extrap');
     R1 = (OCV_mid - V(mid_idx) - abs(I(mid_idx))*R0) / abs(I(mid_idx));
     R1 = max(R1, 0.005);
     R1 = min(R1, 0.2);
     
-    %% ========== FIND BEST C1 ==========
+    %% FIND BEST C1
     C1_vals = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
     best_rmse = inf;
     best_C1 = C1_vals(1);
@@ -63,6 +62,6 @@ function [R0, R1, C1, rmse] = fit_1RC_model(discharge_data, ocv_data)
     C1 = best_C1;
     rmse = best_rmse;
     
-    fprintf('✅ 1-RC parameters: R0=%.4f, R1=%.4f, C1=%d, RMSE=%.1f mV\n', ...
+    fprintf('1-RC parameters: R0=%.4f, R1=%.4f, C1=%d, RMSE=%.1f mV\n', ...
         R0, R1, C1, rmse);
 end
