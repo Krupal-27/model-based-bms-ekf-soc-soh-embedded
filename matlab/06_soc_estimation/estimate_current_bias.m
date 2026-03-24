@@ -16,31 +16,30 @@
 function [I_bias, rest_mask, stats] = estimate_current_bias(I, t, threshold)
     
     if nargin < 3
-        threshold = 0.1;  % 100mA threshold
+        threshold = 0.1;
     end
     
-    fprintf('🔧 Estimating current sensor bias...\n');
+    fprintf('Estimating current sensor bias...\n');
     
-    %% ========== IDENTIFY REST PERIODS ==========
+    %% IDENTIFY REST PERIODS
     rest_mask = abs(I) < threshold;
     
     if ~any(rest_mask)
-        fprintf('   ⚠️  No rest periods found. Using zero bias.\n');
+        fprintf('   No rest periods found. Using zero bias.\n');
         I_bias = 0;
         stats = struct();
         return;
     end
     
-    %% ========== EXTRACT REST CURRENT VALUES ==========
+    %% EXTRACT REST CURRENT VALUES
     I_rest = I(rest_mask);
     t_rest = t(rest_mask);
     
-    %% ========== STATISTICAL ANALYSIS ==========
+    %% STATISTICAL ANALYSIS
     I_bias = mean(I_rest);
     I_std = std(I_rest);
     I_median = median(I_rest);
     
-    % Find longest continuous rest period
     rest_starts = find(diff([0; rest_mask]) == 1);
     rest_ends = find(diff([rest_mask; 0]) == -1);
     
@@ -55,7 +54,7 @@ function [I_bias, rest_mask, stats] = estimate_current_bias(I, t, threshold)
         I_best_rest = I_bias;
     end
     
-    %% ========== CREATE STATS STRUCTURE ==========
+    %% CREATE STATS STRUCTURE
     stats.I_bias = I_bias;
     stats.I_std = I_std;
     stats.I_median = I_median;
@@ -72,7 +71,7 @@ function [I_bias, rest_mask, stats] = estimate_current_bias(I, t, threshold)
     fprintf('   Estimated bias: %.3f mA\n', I_bias*1000);
     fprintf('   Standard deviation: %.3f mA\n', I_std*1000);
     
-    %% ========== PLOT BIAS ESTIMATION ==========
+    %% PLOT BIAS ESTIMATION
     figure('Name', 'Current Bias Estimation', 'Position', [100, 100, 1200, 500]);
     
     subplot(1,2,1);
