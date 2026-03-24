@@ -6,16 +6,15 @@
 function [x_opt, fval, V_sim, exitflag] = fit_ecm_1rc(cycle_data, ocv_data, x0)
     % FIT_ECM_1RC Optimize 1-RC parameters for a single cycle with bounds
     
-    fprintf('🔧 Fitting 1-RC ECM for cycle...\n');
+    fprintf('Fitting 1-RC ECM for cycle...\n');
     
-    %% ========== VALIDATE INPUT DATA ==========
+    %% VALIDATE INPUT DATA
     if ~isstruct(cycle_data)
         error('cycle_data must be a structure');
     end
     
-    % Ensure time is a numeric vector
     if isnumeric(cycle_data.time)
-        t = cycle_data.time(:);  % Make column vector
+        t = cycle_data.time(:);
     else
         error('cycle_data.time must be numeric');
     end
@@ -40,28 +39,27 @@ function [x_opt, fval, V_sim, exitflag] = fit_ecm_1rc(cycle_data, ocv_data, x0)
     fprintf('   Duration: %.1f s\n', t(end));
     fprintf('   Current: %.3f A\n', mean(abs(I)));
     
-    %% ========== SET DEFAULT INITIAL GUESS ==========
+    %% SET DEFAULT INITIAL GUESS
     if nargin < 3 || isempty(x0)
-        x0 = [0.15, 0.08, 40000];  % [R0, R1, C1]
+        x0 = [0.15, 0.08, 40000];
     end
     
-    %% ========== SET REALISTIC BOUNDS ==========
-    % Physical bounds for Li-ion batteries
-    lb = [0.01, 0.001, 100];        % Lower bounds
-    ub = [0.5, 2.0, 100000];         % R1 upper bound increased to 2.0 Ω
-    fprintf('\n📊 Parameter bounds:\n');
-    fprintf('   R0: [%.3f, %.3f] Ω\n', lb(1), ub(1));
-    fprintf('   R1: [%.3f, %.3f] Ω\n', lb(2), ub(2));
+    %% SET REALISTIC BOUNDS
+    lb = [0.01, 0.001, 100];
+    ub = [0.5, 2.0, 100000];
+    fprintf('\nParameter bounds:\n');
+    fprintf('   R0: [%.3f, %.3f] Ohm\n', lb(1), ub(1));
+    fprintf('   R1: [%.3f, %.3f] Ohm\n', lb(2), ub(2));
     fprintf('   C1: [%.0f, %.0f] F\n', lb(3), ub(3));
     
-    %% ========== PREPARE DATA FOR COST FUNCTION ==========
+    %% PREPARE DATA FOR COST FUNCTION
     data.time = t;
     data.I = I;
     data.V = V;
     data.Q = cycle_data.Q;
     data.OCV = ocv_data;
     
-    %% ========== SET OPTIMIZATION OPTIONS ==========
+    %% SET OPTIMIZATION OPTIONS
     options = optimoptions('fmincon', ...
         'Display', 'iter', ...
         'Algorithm', 'sqp', ...
@@ -70,8 +68,8 @@ function [x_opt, fval, V_sim, exitflag] = fit_ecm_1rc(cycle_data, ocv_data, x0)
         'OptimalityTolerance', 1e-4, ...
         'StepTolerance', 1e-4);
     
-    %% ========== RUN OPTIMIZATION WITH BOUNDS ==========
-    fprintf('\n🚀 Running fmincon optimization with bounds...\n');
+    %% RUN OPTIMIZATION WITH BOUNDS
+    fprintf('\nRunning fmincon optimization with bounds...\n');
     tic;
     
     [x_opt, fval, exitflag, output] = fmincon(@(x) cost_ecm_1rc(x, data), ...
@@ -79,24 +77,23 @@ function [x_opt, fval, V_sim, exitflag] = fit_ecm_1rc(cycle_data, ocv_data, x0)
     
     opt_time = toc;
     
-    %% ========== CALCULATE FINAL SIMULATION ==========
+    %% CALCULATE FINAL SIMULATION
     [~, V_sim] = cost_ecm_1rc(x_opt, data);
     
-    %% ========== DISPLAY RESULTS ==========
-    fprintf('\n✅ Optimization complete in %.1f seconds\n', opt_time);
+    %% DISPLAY RESULTS
+    fprintf('\nOptimization complete in %.1f seconds\n', opt_time);
     fprintf('   Function evaluations: %d\n', output.funcCount);
     fprintf('   Exit flag: %d\n', exitflag);
-    fprintf('\n📊 Optimal Parameters:\n');
-    fprintf('   R0 = %.4f Ω\n', x_opt(1));
-    fprintf('   R1 = %.4f Ω\n', x_opt(2));
+    fprintf('\nOptimal Parameters:\n');
+    fprintf('   R0 = %.4f Ohm\n', x_opt(1));
+    fprintf('   R1 = %.4f Ohm\n', x_opt(2));
     fprintf('   C1 = %.0f F\n', x_opt(3));
-    fprintf('   τ = %.1f s\n', x_opt(2) * x_opt(3));
+    fprintf('   tau = %.1f s\n', x_opt(2) * x_opt(3));
     fprintf('   RMSE = %.1f mV\n', fval);
     
-    %% ========== PLOT RESULTS ==========
+    %% PLOT RESULTS
     figure('Position', [100, 100, 1200, 600]);
     
-    % Voltage comparison
     subplot(1,2,1);
     plot(t, V, 'b-', 'LineWidth', 1.5); hold on;
     plot(t, V_sim, 'r--', 'LineWidth', 1.5);
@@ -105,7 +102,6 @@ function [x_opt, fval, V_sim, exitflag] = fit_ecm_1rc(cycle_data, ocv_data, x0)
     legend('Measured', 'Fitted', 'Location', 'best');
     grid on;
     
-    % Error
     subplot(1,2,2);
     error = (V - V_sim) * 1000;
     plot(t, error, 'k-', 'LineWidth', 1);
